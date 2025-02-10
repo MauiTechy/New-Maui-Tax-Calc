@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maui County Property Tax Calculator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .calculator {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            text-align: center; /* Center everything inside the calculator box */
+        }
+        .calculator h2 {
+            margin-top: 10px; /* Add some space between the icon and the heading */
+            font-size: 1.5em; /* Adjust heading size for mobile */
+        }
+        .calculator label {
+            display: block;
+            margin: 10px 0 5px;
+            font-size: 1em; /* Adjust label size for mobile */
+        }
+        .calculator input, .calculator select {
+            width: 100%;
+            padding: 10px; /* Increase padding for easier touch */
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em; /* Adjust font size for mobile */
+        }
+        .calculator button {
+            width: 100%;
+            padding: 15px; /* Increase padding for easier touch */
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em; /* Adjust font size for mobile */
+        }
+        .calculator button:hover {
+            background-color: #218838;
+        }
+        .result {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+        .calculation-steps {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9em; /* Adjust font size for mobile */
+            overflow-x: auto; /* Ensure long lines are scrollable */
+        }
+        .calculator-icon {
+            font-size: 48px;
+            color: #28a745;
+            margin-bottom: 10px; /* Space between the icon and the heading */
+        }
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .calculator {
+                padding: 15px;
+            }
+            .calculator h2 {
+                font-size: 1.3em;
+            }
+            .calculator input, .calculator select, .calculator button {
+                font-size: 0.9em;
+            }
+            .result {
+                font-size: 1.1em;
+            }
+            .calculation-steps {
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator" id="calculator">
+    <!-- Calculator Icon -->
+    <div class="calculator-icon">
+        <i class="fas fa-calculator"></i>
+    </div>
+
+    <!-- Heading -->
+    <h2>Maui County Property Tax Calculator</h2>
+
+    <!-- Tax Classification Dropdown -->
+    <label for="taxClass">Tax Classification:</label>
+    <select id="taxClass">
+        <option value="ownerOccupied">Owner-Occupied</option>
+        <option value="nonOwnerOccupied">Non-Owner-Occupied</option>
+        <option value="tvrStrh">TVR-STRH</option>
+        <option value="longTermRental">Long-Term Rental</option>
+        <option value="commercializedResidential">Commercialized Residential</option>
+        <option value="hotelResort">Hotel and Resort</option>
+        <option value="timeShare">Time Share</option>
+        <option value="agriculture">Agriculture</option>
+        <option value="conservation">Conservation</option>
+        <option value="commercial">Commercial</option>
+        <option value="industrial">Industrial</option>
+    </select>
+
+    <!-- Assessment Value Input -->
+    <label for="assessmentValue">Assessment Value ($):</label>
+    <input type="text" id="assessmentValue" placeholder="Enter assessment value" oninput="formatAssessmentValue(this)">
+
+    <!-- Calculate Button -->
+    <button onclick="calculateTax()">Calculate Tax</button>
+
+    <!-- Result and Calculation Steps -->
+    <div class="result" id="result"></div>
+    <div class="calculation-steps" id="calculationSteps"></div>
+</div>
+
+<script>
+    const taxRates = {
+        ownerOccupied: [
+            { min: 0, max: 1000000, rate: 1.80 },
+            { min: 1000001, max: 3000000, rate: 2.00 },
+            { min: 3000001, max: Infinity, rate: 3.25 }
+        ],
+        nonOwnerOccupied: [
+            { min: 0, max: 1000000, rate: 5.87 },
+            { min: 1000001, max: 3000000, rate: 8.50 },
+            { min: 3000001, max: Infinity, rate: 14.00 }
+        ],
+        tvrStrh: [
+            { min: 0, max: 1000000, rate: 12.50 },
+            { min: 1000001, max: 3000000, rate: 13.50 },
+            { min: 3000001, max: Infinity, rate: 15.00 }
+        ],
+        longTermRental: [
+            { min: 0, max: 1000000, rate: 3.00 },
+            { min: 1000001, max: 3000000, rate: 5.00 },
+            { min: 3000001, max: Infinity, rate: 8.00 }
+        ],
+        commercializedResidential: [
+            { min: 0, max: 1000000, rate: 4.00 },
+            { min: 1000001, max: 3000000, rate: 5.00 },
+            { min: 3000001, max: Infinity, rate: 8.00 }
+        ],
+        hotelResort: 11.75,
+        timeShare: 13.50,
+        agriculture: 3.00,
+        conservation: 8.00,
+        commercial: 6.05,
+        industrial: 7.05
+    };
+
+    // Function to format the assessment value with commas
+    function formatAssessmentValue(input) {
+        // Remove non-numeric characters
+        let value = input.value.replace(/,/g, '');
+        // Format the number with commas
+        input.value = Number(value).toLocaleString();
+    }
+
+    function calculateTax() {
+        const taxClass = document.getElementById('taxClass').value;
+        const assessmentValue = parseFloat(document.getElementById('assessmentValue').value.replace(/,/g, ''));
+
+        if (isNaN(assessmentValue) || assessmentValue <= 0) {
+            document.getElementById('result').innerText = "Please enter a valid assessment value.";
+            document.getElementById('calculationSteps').innerText = "";
+            return;
+        }
+
+        let taxOwed = 0;
+        let calculationSteps = "";
+
+        if (Array.isArray(taxRates[taxClass])) {
+            // Tiered tax calculation
+            calculationSteps = "Calculation Steps:\n";
+            for (const tier of taxRates[taxClass]) {
+                if (assessmentValue > tier.min) {
+                    const taxableAmount = Math.min(assessmentValue, tier.max) - tier.min;
+                    const tierTax = (taxableAmount / 1000) * tier.rate;
+                    taxOwed += tierTax;
+
+                    calculationSteps += `- Tier ($${tier.min.toLocaleString()} - $${tier.max === Infinity ? "∞" : tier.max.toLocaleString()}): $${taxableAmount.toLocaleString()} * $${tier.rate}/1000 = $${tierTax.toFixed(2)}\n`;
+                }
+            }
+        } else {
+            // Flat tax calculation
+            taxOwed = (assessmentValue / 1000) * taxRates[taxClass];
+            calculationSteps = `Calculation Steps:\n- Flat Rate: $${assessmentValue.toLocaleString()} * $${taxRates[taxClass]}/1000 = $${taxOwed.toFixed(2)}`;
+        }
+
+        // Apply minimum tax if applicable
+        if (taxOwed < 300) {
+            calculationSteps += `\n- Minimum Tax Applied: $${taxOwed.toFixed(2)} → $300.00`;
+            taxOwed = 300;
+        }
+
+        // Format taxOwed with commas
+        document.getElementById('result').innerText = `Annual Property Tax: $${taxOwed.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('calculationSteps').innerText = calculationSteps;
+    }
+</script>
+<div style="text-align: center;">
+      <p style="margin-top: 10px;">
+        Created by Travis Speck<br>
+        <a href="mailto:boundlessplaces@gmail.com">boundlessplaces@gmail.com</a><br>
+        808 344 1917
+    </p>
+    <!-- QR Code Image -->
+    <img src="https://api.qrserver.com/v1/create-qr-code/?data=https%3A%2F%2Fmauitravis.com&size=150x150&margin=10" alt="QR Code for mauitravis.com" style="margin-bottom: 5px;">
+    <p>mauitravis.com</p>
+</div>
+</body>
+</html>
